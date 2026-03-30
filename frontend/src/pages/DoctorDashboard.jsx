@@ -26,7 +26,7 @@ const DoctorDashboard = () => {
     fetchDoctorPatients,
   } = useDoctor();
 
-  const { fetchPrescriptions, getActivePrescriptions } = usePrescription();
+  const { fetchPrescriptions } = usePrescription();
 
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -38,43 +38,58 @@ const DoctorDashboard = () => {
   // Fetch doctor data on mount
   useEffect(() => {
     if (user?.id) {
-      fetchCurrentDoctor(user._id);
+      fetchCurrentDoctor(user.id);
     }
-  }, [user, fetchCurrentDoctor]);
+  }, [user?.id, fetchCurrentDoctor]);
 
   // Fetch appointments and patients after doctor data is loaded
   useEffect(() => {
-    if (currentDoctor?._id) {
-      setAppointmentsLoading(true);
-      setAppointmentsError('');
-
-      Promise.all([
-        fetchDoctorAppointments(currentDoctor._id).catch((err) => {
-          console.error('Failed to fetch appointments:', err);
-          return [];
-        }),
-        fetchDoctorPatients(currentDoctor._id).catch((err) => {
-          console.error('Failed to fetch patients:', err);
-          return [];
-        }),
-        fetchPrescriptions({ doctorId: currentDoctor._id }).catch((err) => {
-          console.error('Failed to fetch prescriptions:', err);
-          return [];
-        }),
-      ])
-        .then(([appts, pats, presc]) => {
-          setAppointments(appts || []);
-          setPatients(pats || []);
-          setPrescriptions(presc || []);
-        })
-        .catch((err) => {
-          setAppointmentsError(err.message || 'Failed to load data');
-        })
-        .finally(() => {
-          setAppointmentsLoading(false);
-        });
+    if (!currentDoctor?._id) {
+      return undefined;
     }
-  }, [currentDoctor, fetchDoctorAppointments, fetchDoctorPatients]);
+
+    let isActive = true;
+    setAppointmentsLoading(true);
+    setAppointmentsError('');
+
+    Promise.all([
+      fetchDoctorAppointments(currentDoctor._id).catch((err) => {
+        console.error('Failed to fetch appointments:', err);
+        return [];
+      }),
+      fetchDoctorPatients(currentDoctor._id).catch((err) => {
+        console.error('Failed to fetch patients:', err);
+        return [];
+      }),
+      fetchPrescriptions({ doctorId: currentDoctor._id }).catch((err) => {
+        console.error('Failed to fetch prescriptions:', err);
+        return [];
+      }),
+    ])
+      .then(([appts, pats, presc]) => {
+        if (!isActive) {
+          return;
+        }
+
+        setAppointments(appts || []);
+        setPatients(pats || []);
+        setPrescriptions(presc || []);
+      })
+      .catch((err) => {
+        if (isActive) {
+          setAppointmentsError(err.message || 'Failed to load data');
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setAppointmentsLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [currentDoctor?._id, fetchDoctorAppointments, fetchDoctorPatients, fetchPrescriptions]);
 
   // Loading state for initial doctor data
   if (loading) {
@@ -92,7 +107,7 @@ const DoctorDashboard = () => {
         <div className="max-w-7xl mx-auto">
           <ErrorMessage
             message={error}
-            onRetry={() => fetchCurrentDoctor(user._id)}
+            onRetry={() => fetchCurrentDoctor(user?.id)}
             dismissible={false}
           />
         </div>

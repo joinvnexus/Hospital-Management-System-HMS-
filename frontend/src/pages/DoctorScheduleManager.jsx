@@ -36,7 +36,7 @@ const DoctorScheduleManager = () => {
   // Fetch doctor data on mount
   useEffect(() => {
     if (user?.id) {
-      fetchCurrentDoctor(user._id);
+      fetchCurrentDoctor(user.id);
     }
   }, [user, fetchCurrentDoctor]);
 
@@ -94,7 +94,7 @@ const DoctorScheduleManager = () => {
 
       // Refresh doctor data
       setTimeout(() => {
-        fetchCurrentDoctor(user._id);
+        fetchCurrentDoctor(user.id);
         setShowSuccess(false);
       }, 2000);
     } catch (err) {
@@ -134,7 +134,7 @@ const DoctorScheduleManager = () => {
         <div className="max-w-6xl mx-auto">
           <ErrorMessage
             message={error}
-            onRetry={() => fetchCurrentDoctor(user._id)}
+            onRetry={() => fetchCurrentDoctor(user?.id)}
             dismissible={false}
           />
         </div>

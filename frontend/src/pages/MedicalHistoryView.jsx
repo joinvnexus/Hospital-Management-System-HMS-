@@ -18,9 +18,9 @@ const MedicalHistoryView = () => {
   // Fetch patient data on mount
   useEffect(() => {
     if (user?.id) {
-      fetchCurrentPatient(user._id);
+      fetchCurrentPatient(user.id);
     }
-  }, [user, fetchCurrentPatient]);
+  }, [user?.id, fetchCurrentPatient]);
 
   // Loading state
   if (loading) {
@@ -38,7 +38,7 @@ const MedicalHistoryView = () => {
         <div className="max-w-4xl mx-auto">
           <ErrorMessage
             message={error}
-            onRetry={() => fetchCurrentPatient(user._id)}
+            onRetry={() => fetchCurrentPatient(user?.id)}
             dismissible={false}
           />
         </div>

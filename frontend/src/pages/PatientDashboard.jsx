@@ -34,38 +34,53 @@ const PatientDashboard = () => {
   // Fetch patient data on mount
   useEffect(() => {
     if (user?.id) {
-      fetchCurrentPatient(user._id);
+      fetchCurrentPatient(user.id);
     }
-  }, [user, fetchCurrentPatient]);
+  }, [user?.id, fetchCurrentPatient]);
 
   // Fetch appointments and prescriptions after patient data is loaded
   useEffect(() => {
-    if (currentPatient?._id) {
-      setAppointmentsLoading(true);
-      setAppointmentsError('');
-
-      Promise.all([
-        fetchPatientAppointments(currentPatient._id).catch((err) => {
-          console.error('Failed to fetch appointments:', err);
-          return [];
-        }),
-        fetchPatientPrescriptions(currentPatient._id).catch((err) => {
-          console.error('Failed to fetch prescriptions:', err);
-          return [];
-        }),
-      ])
-        .then(([appts, presc]) => {
-          setAppointments(appts || []);
-          setPrescriptions(presc || []);
-        })
-        .catch((err) => {
-          setAppointmentsError(err.message || 'Failed to load data');
-        })
-        .finally(() => {
-          setAppointmentsLoading(false);
-        });
+    if (!currentPatient?._id) {
+      return undefined;
     }
-  }, [currentPatient, fetchPatientAppointments, fetchPatientPrescriptions]);
+
+    let isActive = true;
+    setAppointmentsLoading(true);
+    setAppointmentsError('');
+
+    Promise.all([
+      fetchPatientAppointments(currentPatient._id).catch((err) => {
+        console.error('Failed to fetch appointments:', err);
+        return [];
+      }),
+      fetchPatientPrescriptions(currentPatient._id).catch((err) => {
+        console.error('Failed to fetch prescriptions:', err);
+        return [];
+      }),
+    ])
+      .then(([appts, presc]) => {
+        if (!isActive) {
+          return;
+        }
+
+        setAppointments(appts || []);
+        setPrescriptions(presc || []);
+      })
+      .catch((err) => {
+        if (isActive) {
+          setAppointmentsError(err.message || 'Failed to load data');
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setAppointmentsLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [currentPatient?._id, fetchPatientAppointments, fetchPatientPrescriptions]);
 
   // Loading state for initial patient data
   if (loading) {
@@ -83,7 +98,7 @@ const PatientDashboard = () => {
         <div className="max-w-7xl mx-auto">
           <ErrorMessage
             message={error}
-            onRetry={() => fetchCurrentPatient(user._id)}
+            onRetry={() => fetchCurrentPatient(user?.id)}
             dismissible={false}
           />
         </div>

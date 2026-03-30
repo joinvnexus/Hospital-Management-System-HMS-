@@ -19,7 +19,7 @@ const DoctorProfileView = () => {
   // Fetch doctor data on mount
   useEffect(() => {
     if (user?.id) {
-      fetchCurrentDoctor(user._id);
+      fetchCurrentDoctor(user.id);
     }
   }, [user, fetchCurrentDoctor]);
 
@@ -39,7 +39,7 @@ const DoctorProfileView = () => {
         <div className="max-w-4xl mx-auto">
           <ErrorMessage
             message={error}
-            onRetry={() => fetchCurrentDoctor(user._id)}
+            onRetry={() => fetchCurrentDoctor(user?.id)}
             dismissible={false}
           />
         </div>

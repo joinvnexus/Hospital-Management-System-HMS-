@@ -37,9 +37,9 @@ const PatientProfileEdit = () => {
   // Fetch patient data on mount
   useEffect(() => {
     if (user?.id) {
-      fetchCurrentPatient(user._id);
+      fetchCurrentPatient(user.id);
     }
-  }, [user, fetchCurrentPatient]);
+  }, [user?.id, fetchCurrentPatient]);
 
   // Populate form when patient data loads
   useEffect(() => {
@@ -128,7 +128,7 @@ const PatientProfileEdit = () => {
     setSubmitError('');
 
     try {
-      await updatePatient(user._id, formData);
+      await updatePatient(user.id, formData);
       setShowSuccess(true);
 
       // Redirect after success
@@ -158,7 +158,7 @@ const PatientProfileEdit = () => {
         <div className="max-w-2xl mx-auto">
           <ErrorMessage
             message={error}
-            onRetry={() => fetchCurrentPatient(user._id)}
+            onRetry={() => fetchCurrentPatient(user?.id)}
             dismissible={false}
           />
         </div>
