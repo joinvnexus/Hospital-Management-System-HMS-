@@ -1,0 +1,42 @@
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.vim
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+.next/
+frontend/dist/
+frontend/build/
+backend/dist/
+backend/build/
+
+# Testing
+coverage/
+.nyc_output/
+frontend/coverage/
+backend/coverage/
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
