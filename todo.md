@@ -32,15 +32,15 @@
 - [x] Improve appointment booking flow
 - [x] Improve appointment list page
 - [x] Improve prescription list page
-- [ ] Refresh appointment detail/confirmation page
+- [x] Refresh appointment detail/confirmation page
 
 ## Doctor Experience
 - [x] Refresh doctor dashboard
 - [x] Refresh doctor profile view/edit
 - [x] Improve doctor schedule manager
 - [x] Improve prescription creation page
-- [ ] Refresh prescription detail page
-- [ ] Improve appointment calendar page
+- [x] Refresh prescription detail page
+- [x] Improve appointment calendar page
 
 ## Quality
 - [ ] Add/update auth route protection tests
