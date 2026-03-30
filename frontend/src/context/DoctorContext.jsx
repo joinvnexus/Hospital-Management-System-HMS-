@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import apiClient from '../services/api';
+import { appointmentApi, doctorApi } from '../services/domainApi';
 
 export const DoctorContext = React.createContext();
 
@@ -9,112 +9,93 @@ export const DoctorProvider = ({ children }) => {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState(null);
 
-  const unwrapResponseData = useCallback(
-    (response) => response?.data?.data ?? response?.data ?? null,
-    []
-  );
-
   const fetchCurrentDoctor = useCallback(async (doctorId) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get(`/doctors/${doctorId}`);
-      const doctor = unwrapResponseData(response);
+      const doctor = await doctorApi.getById(doctorId);
       setCurrentDoctor(doctor);
       return doctor;
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to fetch doctor';
-      setError(errorMsg);
+      setError(err.message || 'Failed to fetch doctor');
       throw err;
     } finally {
       setLoading(false);
     }
-  }, [unwrapResponseData]);
+  }, []);
 
   const fetchDoctorById = useCallback(async (doctorId) => {
     try {
-      const response = await apiClient.get(`/doctors/${doctorId}`);
-      return unwrapResponseData(response);
+      return await doctorApi.getById(doctorId);
     } catch (err) {
-      setError(err.response?.data?.message || err.message);
+      setError(err.message || 'Failed to fetch doctor');
       throw err;
     }
-  }, [unwrapResponseData]);
+  }, []);
 
   const fetchAllDoctors = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get('/doctors');
-      const doctorList = unwrapResponseData(response) ?? [];
+      const doctorList = await doctorApi.getAll();
       setDoctors(doctorList);
       return doctorList;
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to fetch doctors';
-      setError(errorMsg);
+      setError(err.message || 'Failed to fetch doctors');
       throw err;
     } finally {
       setLoading(false);
     }
-  }, [unwrapResponseData]);
+  }, []);
 
   const updateDoctor = useCallback(async (doctorId, data) => {
     setError(null);
     try {
-      const response = await apiClient.put(`/doctors/${doctorId}`, data);
-      const doctor = unwrapResponseData(response);
+      const doctor = await doctorApi.update(doctorId, data);
       setCurrentDoctor(doctor);
       return doctor;
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to update doctor';
-      setError(errorMsg);
+      setError(err.message || 'Failed to update doctor');
       throw err;
     }
-  }, [unwrapResponseData]);
+  }, []);
 
   const updateDoctorSchedule = useCallback(async (doctorId, schedule) => {
     setError(null);
     try {
-      const response = await apiClient.put(`/doctors/${doctorId}`, { schedule });
-      const doctor = unwrapResponseData(response);
+      const doctor = await doctorApi.update(doctorId, { schedule });
       setCurrentDoctor(doctor);
       return doctor;
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to update schedule';
-      setError(errorMsg);
+      setError(err.message || 'Failed to update schedule');
       throw err;
     }
-  }, [unwrapResponseData]);
+  }, []);
 
   const fetchDoctorSchedule = useCallback(async (doctorId) => {
     setError(null);
     try {
-      const response = await apiClient.get(`/doctors/${doctorId}/schedule`);
-      return unwrapResponseData(response);
+      return await doctorApi.getSchedule(doctorId);
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to fetch schedule';
-      setError(errorMsg);
+      setError(err.message || 'Failed to fetch schedule');
       throw err;
     }
-  }, [unwrapResponseData]);
+  }, []);
 
   const fetchDoctorAppointments = useCallback(async (doctorId) => {
     setError(null);
     try {
-      const response = await apiClient.get(`/appointments?doctorId=${doctorId}`);
-      return unwrapResponseData(response) ?? [];
+      return await appointmentApi.getAll({ doctorId });
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to fetch appointments';
-      setError(errorMsg);
+      setError(err.message || 'Failed to fetch appointments');
       return [];
     }
-  }, [unwrapResponseData]);
+  }, []);
 
   const fetchDoctorPatients = useCallback(async (doctorId) => {
     setError(null);
     try {
-      const response = await apiClient.get(`/appointments?doctorId=${doctorId}`);
-      const appointments = unwrapResponseData(response) ?? [];
+      const appointments = await appointmentApi.getAll({ doctorId });
       const uniquePatients = [];
       const seenPatientIds = new Set();
 
@@ -132,51 +113,49 @@ export const DoctorProvider = ({ children }) => {
 
       return uniquePatients;
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to fetch patients';
-      setError(errorMsg);
+      setError(err.message || 'Failed to fetch patients');
       return [];
     }
-  }, [unwrapResponseData]);
+  }, []);
 
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
-  const value = useMemo(() => ({
-    currentDoctor,
-    doctors,
-    loading,
-    error,
-    fetchCurrentDoctor,
-    fetchDoctorById,
-    fetchAllDoctors,
-    updateDoctor,
-    updateDoctorSchedule,
-    fetchDoctorSchedule,
-    fetchDoctorAppointments,
-    fetchDoctorPatients,
-    clearError,
-  }), [
-    clearError,
-    currentDoctor,
-    doctors,
-    error,
-    fetchAllDoctors,
-    fetchCurrentDoctor,
-    fetchDoctorAppointments,
-    fetchDoctorById,
-    fetchDoctorPatients,
-    fetchDoctorSchedule,
-    loading,
-    updateDoctor,
-    updateDoctorSchedule,
-  ]);
-
-  return (
-    <DoctorContext.Provider value={value}>
-      {children}
-    </DoctorContext.Provider>
+  const value = useMemo(
+    () => ({
+      currentDoctor,
+      doctors,
+      loading,
+      error,
+      fetchCurrentDoctor,
+      fetchDoctorById,
+      fetchAllDoctors,
+      updateDoctor,
+      updateDoctorSchedule,
+      fetchDoctorSchedule,
+      fetchDoctorAppointments,
+      fetchDoctorPatients,
+      clearError,
+    }),
+    [
+      clearError,
+      currentDoctor,
+      doctors,
+      error,
+      fetchAllDoctors,
+      fetchCurrentDoctor,
+      fetchDoctorAppointments,
+      fetchDoctorById,
+      fetchDoctorPatients,
+      fetchDoctorSchedule,
+      loading,
+      updateDoctor,
+      updateDoctorSchedule,
+    ]
   );
+
+  return <DoctorContext.Provider value={value}>{children}</DoctorContext.Provider>;
 };
 
 export const useDoctor = () => {

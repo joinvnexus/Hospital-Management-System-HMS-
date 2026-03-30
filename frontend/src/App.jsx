@@ -39,7 +39,7 @@ function App() {
           <AppointmentProvider>
             <PrescriptionProvider>
               <Router>
-                <div className="min-h-screen flex flex-col">
+                <div className="app-shell min-h-screen flex flex-col">
                   <Header />
                   <main className="flex-grow">
                     <Routes>

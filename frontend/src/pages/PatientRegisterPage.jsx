@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import apiClient from '../services/api';
-import { validateEmail, validatePhone, validatePassword, validatePasswordStrength, validateForm } from '../utils/validation';
-import { VALIDATION_RULES, MESSAGES, GENDER_OPTIONS } from '../utils/constants';
+import { useNavigate } from 'react-router-dom';
+import { authApi } from '../services/domainApi';
+import { validateEmail, validatePhone, validatePassword, validatePasswordStrength } from '../utils/validation';
+import { GENDER_OPTIONS } from '../utils/constants';
+import { ROUTES } from '../utils/routes';
+import { useAuth } from '../context/AuthContext';
 
 const PatientRegisterPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -17,411 +19,160 @@ const PatientRegisterPage = () => {
     gender: '',
     phone: '',
   });
-
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [passwordStrength, setPasswordStrength] = useState({ score: 0, feedback: [] });
   const [showPassword, setShowPassword] = useState(false);
 
-  // Handle input change
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    // Clear error for this field
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
+      setErrors((prev) => ({ ...prev, [name]: '' }));
     }
-
-    // Check password strength
     if (name === 'password') {
       setPasswordStrength(validatePasswordStrength(value));
     }
   };
 
-  // Validate form
   const validateFormData = () => {
-    const newErrors = {};
+    const nextErrors = {};
 
-    // First name validation
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-    } else if (formData.firstName.length < 2) {
-      newErrors.firstName = 'First name must be at least 2 characters';
-    }
+    if (!formData.firstName.trim()) nextErrors.firstName = 'First name is required';
+    if (!formData.lastName.trim()) nextErrors.lastName = 'Last name is required';
+    if (!validateEmail(formData.email)) nextErrors.email = 'Please enter a valid email address';
+    if (!validatePassword(formData.password)) nextErrors.password = 'Password must be at least 6 characters';
+    if (formData.password !== formData.confirmPassword) nextErrors.confirmPassword = 'Passwords do not match';
 
-    // Last name validation
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
-    } else if (formData.lastName.length < 2) {
-      newErrors.lastName = 'Last name must be at least 2 characters';
-    }
+    const ageNum = Number.parseInt(formData.age, 10);
+    if (!ageNum || ageNum < 18 || ageNum > 120) nextErrors.age = 'Age must be between 18 and 120';
+    if (!formData.gender) nextErrors.gender = 'Gender is required';
+    if (!validatePhone(formData.phone)) nextErrors.phone = 'Please enter a valid phone number';
 
-    // Email validation
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!validateEmail(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (!validatePassword(formData.password)) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    // Confirm password validation
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    // Age validation
-    if (!formData.age) {
-      newErrors.age = 'Age is required';
-    } else {
-      const ageNum = parseInt(formData.age);
-      if (ageNum < 18 || ageNum > 120) {
-        newErrors.age = 'Age must be between 18 and 120';
-      }
-    }
-
-    // Gender validation
-    if (!formData.gender) {
-      newErrors.gender = 'Gender is required';
-    }
-
-    // Phone validation
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!validatePhone(formData.phone)) {
-      newErrors.phone = 'Please enter a valid phone number';
-    }
-
-    return newErrors;
+    return nextErrors;
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSuccessMessage('');
-    
-    // Validate form
-    const newErrors = validateFormData();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    const nextErrors = validateFormData();
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
 
     setLoading(true);
+    setSuccessMessage('');
 
     try {
-      const response = await apiClient.post('/auth/register/patient', {
+      const response = await authApi.registerPatient({
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
         password: formData.password,
-        age: parseInt(formData.age),
+        age: Number.parseInt(formData.age, 10),
         gender: formData.gender,
         phone: formData.phone,
       });
 
-      if (response.data.success) {
-        // Save token and user data
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.patient));
-        localStorage.setItem('role', 'patient');
-
-        setSuccessMessage('Registration successful! Redirecting to dashboard...');
-        
-        // Redirect after 2 seconds
-        setTimeout(() => {
-          navigate('/patient/dashboard');
-        }, 2000);
-      }
+      login(response.data.patient, response.data.token, 'patient');
+      setSuccessMessage('Registration successful! Redirecting to dashboard...');
+      setTimeout(() => navigate(ROUTES.patientDashboard), 1500);
     } catch (error) {
-      // Better error handling with debugging
-      let errorMessage = 'Registration failed. Please try again.';
-      
-      if (!error.response) {
-        // Network error
-        errorMessage = 'Network error. Please check if backend server is running on http://localhost:5000';
-        console.error('Network Error:', error.message);
-      } else if (error.response?.status === 400) {
-        // Validation error
-        errorMessage = error.response.data?.message || 'Invalid input. Please check all fields.';
-      } else if (error.response?.status === 500) {
-        // Server error
-        errorMessage = 'Server error. ' + (error.response.data?.message || 'Please try again later.');
-        console.error('Server Error:', error.response.data);
-      } else {
-        // Other errors
-        errorMessage = error.response?.data?.message || errorMessage;
-      }
-      
-      setErrors({ form: errorMessage });
-      console.error('Registration Error:', { status: error.response?.status, data: error.response?.data });
+      setErrors({ form: error.message || 'Registration failed. Please try again.' });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full mx-auto bg-white rounded-lg shadow-lg p-8">
+    <div className="page-shell px-4 py-12 sm:px-6 lg:px-8">
+      <div className="panel mx-auto max-w-2xl p-8">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 text-center mb-2">Create Patient Account</h2>
-          <p className="text-center text-gray-600 text-sm">Join HMS for better healthcare management</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-700">Patient Portal</p>
+          <h2 className="mt-3 text-3xl font-semibold text-slate-900">Create your patient account</h2>
+          <p className="mt-2 text-sm text-slate-500">Manage appointments, records, and prescriptions from one place.</p>
         </div>
 
-        {successMessage && (
-          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-green-700 text-sm font-medium">{successMessage}</p>
-          </div>
-        )}
-
-        {errors.form && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-700 text-sm font-medium">{errors.form}</p>
-          </div>
-        )}
+        {successMessage && <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">{successMessage}</div>}
+        {errors.form && <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{errors.form}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Name Row */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-                First Name *
-              </label>
-              <input
-                id="firstName"
-                name="firstName"
-                type="text"
-                value={formData.firstName}
-                onChange={handleInputChange}
-                placeholder="John"
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
-                  errors.firstName ? 'border-red-300' : 'border-gray-300'
-                }`}
-              />
-              {errors.firstName && <p className="text-red-600 text-xs mt-1">{errors.firstName}</p>}
+              <label htmlFor="firstName" className="mb-1 block text-sm font-medium text-slate-700">First Name *</label>
+              <input id="firstName" name="firstName" value={formData.firstName} onChange={handleInputChange} className="w-full rounded-2xl border border-slate-200 px-4 py-3" />
+              {errors.firstName && <p className="mt-1 text-xs text-rose-600">{errors.firstName}</p>}
             </div>
-
             <div>
-              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                Last Name *
-              </label>
-              <input
-                id="lastName"
-                name="lastName"
-                type="text"
-                value={formData.lastName}
-                onChange={handleInputChange}
-                placeholder="Doe"
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
-                  errors.lastName ? 'border-red-300' : 'border-gray-300'
-                }`}
-              />
-              {errors.lastName && <p className="text-red-600 text-xs mt-1">{errors.lastName}</p>}
+              <label htmlFor="lastName" className="mb-1 block text-sm font-medium text-slate-700">Last Name *</label>
+              <input id="lastName" name="lastName" value={formData.lastName} onChange={handleInputChange} className="w-full rounded-2xl border border-slate-200 px-4 py-3" />
+              {errors.lastName && <p className="mt-1 text-xs text-rose-600">{errors.lastName}</p>}
             </div>
           </div>
 
-          {/* Email */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email Address *
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              placeholder="john@example.com"
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
-                errors.email ? 'border-red-300' : 'border-gray-300'
-              }`}
-            />
-            {errors.email && <p className="text-red-600 text-xs mt-1">{errors.email}</p>}
+            <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">Email *</label>
+            <input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} className="w-full rounded-2xl border border-slate-200 px-4 py-3" />
+            {errors.email && <p className="mt-1 text-xs text-rose-600">{errors.email}</p>}
           </div>
 
-          {/* Password */}
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password *
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder="••••••••"
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
-                  errors.password ? 'border-red-300' : 'border-gray-300'
-                }`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
-              >
-                {showPassword ? '🙈' : '👁️'}
-              </button>
-            </div>
-
-            {/* Password Strength Indicator */}
-            {formData.password && (
-              <div className="mt-2 space-y-1">
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-gray-200 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full transition-all ${
-                        passwordStrength.score <= 2
-                          ? 'bg-red-500 w-1/3'
-                          : passwordStrength.score <= 3
-                          ? 'bg-yellow-500 w-2/3'
-                          : 'bg-green-500 w-full'
-                      }`}
-                    />
-                  </div>
-                  <span className="text-xs font-medium text-gray-600">
-                    {passwordStrength.score <= 2 ? 'Weak' : passwordStrength.score <= 3 ? 'Fair' : 'Strong'}
-                  </span>
-                </div>
-                {passwordStrength.feedback.length > 0 && (
-                  <ul className="text-xs text-gray-600 space-y-1">
-                    {passwordStrength.feedback.map((item, idx) => (
-                      <li key={idx} className="flex items-center gap-1">
-                        <span>•</span> {item}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">Password *</label>
+              <div className="relative">
+                <input id="password" name="password" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={handleInputChange} className="w-full rounded-2xl border border-slate-200 px-4 py-3 pr-16" />
+                <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-3 text-sm text-slate-500">
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
               </div>
-            )}
-
-            {errors.password && <p className="text-red-600 text-xs mt-1">{errors.password}</p>}
-          </div>
-
-          {/* Confirm Password */}
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-              Confirm Password *
-            </label>
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type={showPassword ? 'text' : 'password'}
-              value={formData.confirmPassword}
-              onChange={handleInputChange}
-              placeholder="••••••••"
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
-                errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-              }`}
-            />
-            {errors.confirmPassword && <p className="text-red-600 text-xs mt-1">{errors.confirmPassword}</p>}
-          </div>
-
-          {/* Age and Gender Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
-                Age *
-              </label>
-              <input
-                id="age"
-                name="age"
-                type="number"
-                value={formData.age}
-                onChange={handleInputChange}
-                placeholder="30"
-                min="18"
-                max="120"
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
-                  errors.age ? 'border-red-300' : 'border-gray-300'
-                }`}
-              />
-              {errors.age && <p className="text-red-600 text-xs mt-1">{errors.age}</p>}
+              {formData.password && (
+                <div className="mt-2 text-xs text-slate-500">
+                  Strength: {passwordStrength.score <= 2 ? 'Weak' : passwordStrength.score <= 3 ? 'Fair' : 'Strong'}
+                </div>
+              )}
+              {errors.password && <p className="mt-1 text-xs text-rose-600">{errors.password}</p>}
             </div>
-
             <div>
-              <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
-                Gender *
-              </label>
-              <select
-                id="gender"
-                name="gender"
-                value={formData.gender}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
-                  errors.gender ? 'border-red-300' : 'border-gray-300'
-                }`}
-              >
+              <label htmlFor="confirmPassword" className="mb-1 block text-sm font-medium text-slate-700">Confirm Password *</label>
+              <input id="confirmPassword" name="confirmPassword" type={showPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleInputChange} className="w-full rounded-2xl border border-slate-200 px-4 py-3" />
+              {errors.confirmPassword && <p className="mt-1 text-xs text-rose-600">{errors.confirmPassword}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <label htmlFor="age" className="mb-1 block text-sm font-medium text-slate-700">Age *</label>
+              <input id="age" name="age" type="number" value={formData.age} onChange={handleInputChange} className="w-full rounded-2xl border border-slate-200 px-4 py-3" />
+              {errors.age && <p className="mt-1 text-xs text-rose-600">{errors.age}</p>}
+            </div>
+            <div>
+              <label htmlFor="gender" className="mb-1 block text-sm font-medium text-slate-700">Gender *</label>
+              <select id="gender" name="gender" value={formData.gender} onChange={handleInputChange} className="w-full rounded-2xl border border-slate-200 px-4 py-3">
                 <option value="">Select Gender</option>
-                {GENDER_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
+                {GENDER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
-              {errors.gender && <p className="text-red-600 text-xs mt-1">{errors.gender}</p>}
+              {errors.gender && <p className="mt-1 text-xs text-rose-600">{errors.gender}</p>}
+            </div>
+            <div>
+              <label htmlFor="phone" className="mb-1 block text-sm font-medium text-slate-700">Phone *</label>
+              <input id="phone" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full rounded-2xl border border-slate-200 px-4 py-3" />
+              {errors.phone && <p className="mt-1 text-xs text-rose-600">{errors.phone}</p>}
             </div>
           </div>
 
-          {/* Phone */}
-          <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-              Phone Number *
-            </label>
-            <input
-              id="phone"
-              name="phone"
-              type="tel"
-              value={formData.phone}
-              onChange={handleInputChange}
-              placeholder="1234567890"
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
-                errors.phone ? 'border-red-300' : 'border-gray-300'
-              }`}
-            />
-            {errors.phone && <p className="text-red-600 text-xs mt-1">{errors.phone}</p>}
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed mt-6"
-          >
+          <button type="submit" disabled={loading} className="w-full rounded-full bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50">
             {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
-        {/* Sign In Link */}
-        <div className="mt-6 text-center">
-          <p className="text-gray-600 text-sm">
-            Already have an account?{' '}
-            <a href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
-              Sign In
-            </a>
-          </p>
-        </div>
-
-        {/* Info Box */}
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <p className="text-xs text-blue-700">
-            <strong>Note:</strong> Your account will be created as a patient. You can view and manage your medical records, book appointments with doctors, and receive prescriptions.
-          </p>
+        <div className="mt-6 text-center text-sm text-slate-600">
+          Already have an account?{' '}
+          <button type="button" onClick={() => navigate(ROUTES.login)} className="font-medium text-sky-700 hover:text-sky-600">
+            Sign In
+          </button>
         </div>
       </div>
     </div>

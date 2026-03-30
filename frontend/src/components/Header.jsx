@@ -1,124 +1,102 @@
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getDashboardRoute, getPrimaryNav, getProfileRoute, ROUTES } from '../utils/routes';
 
 const Header = () => {
   const { user, isAuthenticated, logout, role } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
+  const navLinks = getPrimaryNav(role, isAuthenticated);
 
   const getInitials = () => {
     if (user?.firstName && user?.lastName) {
       return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
     }
-    return '?';
+    return role === 'doctor' ? 'DR' : 'PT';
   };
 
   const handleLogout = () => {
     logout();
     setDropdownOpen(false);
-    navigate('/');
+    navigate(ROUTES.home);
   };
-
-  const handleProfileClick = () => {
-    if (role === 'patient') {
-      navigate('/patient/profile');
-    } else if (role === 'doctor') {
-      navigate('/doctor/profile');
-    }
-    setDropdownOpen(false);
-  };
-
-  const publicNavLinks = [
-    { href: '/', label: 'Home' },
-    { href: '/doctors', label: 'Doctors' },
-  ];
-
-  const authenticatedNavLinks = role === 'patient'
-    ? [
-        { href: '/', label: 'Home' },
-        { href: '/doctors', label: 'Doctors' },
-        { href: '/patient/dashboard', label: 'Dashboard' },
-      ]
-    : [
-        { href: '/', label: 'Home' },
-        { href: '/doctor/dashboard', label: 'Dashboard' },
-      ];
-
-  const navLinks = isAuthenticated ? authenticatedNavLinks : publicNavLinks;
 
   return (
-    <header className="bg-blue-600 text-white shadow-lg sticky top-0 z-40">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <div className="flex items-center cursor-pointer" onClick={() => navigate('/')}>
-            <h1 className="text-2xl font-bold">HMS</h1>
-            <span className="ml-2 text-sm hidden sm:inline">Hospital Management System</span>
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/90 text-white backdrop-blur-xl">
+      <nav className="section-wrap px-4 sm:px-6 lg:px-8">
+        <div className="flex min-h-[76px] items-center justify-between gap-4">
+          <div
+            className="flex cursor-pointer items-center gap-3"
+            onClick={() => navigate(isAuthenticated ? getDashboardRoute(role) : ROUTES.home)}
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-cyan-300 to-emerald-300 font-black text-slate-950">
+              HMS
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-200">Care Ops</p>
+              <p className="text-base font-semibold">Hospital Management System</p>
+            </div>
           </div>
 
-          {/* Navigation Links */}
-          <ul className="flex space-x-4 items-center flex-1 justify-center">
+          <ul className="hidden flex-1 items-center justify-center gap-2 lg:flex">
             {navLinks.map((link) => (
               <li key={link.href}>
-                <a
-                  href={link.href}
-                  className={`
-                    hover:text-blue-200 transition-colors px-3 py-2 rounded-md text-sm
-                    ${location.pathname === link.href ? 'bg-blue-700' : ''}
-                  `}
+                <NavLink
+                  to={link.href}
+                  className={({ isActive }) =>
+                    `rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-white text-slate-950'
+                        : 'text-slate-200 hover:bg-white/10 hover:text-white'
+                    }`
+                  }
                 >
                   {link.label}
-                </a>
+                </NavLink>
               </li>
             ))}
           </ul>
 
-          {/* User Profile Section */}
           {isAuthenticated && user ? (
             <div className="relative">
               <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center space-x-2 hover:bg-blue-700 px-3 py-2 rounded-md transition-colors"
+                onClick={() => setDropdownOpen((open) => !open)}
+                className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-2 transition-colors hover:bg-white/10"
               >
-                {/* Avatar */}
-                <div className="w-8 h-8 bg-blue-700 rounded-full flex items-center justify-center text-sm font-bold">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-400/20 text-sm font-bold text-sky-100">
                   {getInitials()}
                 </div>
-                {/* User Name */}
-                <span className="text-sm hidden sm:inline">
-                  {user.firstName} {user.lastName}
+                <span className="hidden text-sm sm:inline">
+                  {user.firstName || ''} {user.lastName || ''}
                 </span>
-                {/* Dropdown Arrow */}
                 <svg
-                  className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
+                  className={`h-4 w-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 14l-7 7m0 0l-7-7m7 7V3"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
-              {/* Dropdown Menu */}
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-md shadow-lg py-1 z-50">
-                  <div className="px-4 py-2 border-b border-gray-200">
+                <div className="absolute right-0 z-50 mt-2 w-56 rounded-3xl border border-slate-200 bg-white p-2 text-slate-800 shadow-2xl">
+                  <div className="border-b border-slate-100 px-4 py-3">
                     <p className="text-sm font-medium">
-                      {user.firstName} {user.lastName}
+                      {user.firstName || 'User'} {user.lastName || ''}
                     </p>
-                    <p className="text-xs text-gray-500">{role === 'patient' ? 'Patient' : 'Doctor'}</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                      {role === 'doctor' ? 'Doctor Portal' : 'Patient Portal'}
+                    </p>
                   </div>
 
                   <button
-                    onClick={handleProfileClick}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors"
+                    onClick={() => {
+                      navigate(getProfileRoute(role));
+                      setDropdownOpen(false);
+                    }}
+                    className="w-full rounded-2xl px-4 py-3 text-left text-sm transition-colors hover:bg-slate-50"
                   >
                     View Profile
                   </button>
@@ -126,10 +104,10 @@ const Header = () => {
                   {role === 'doctor' && (
                     <button
                       onClick={() => {
-                        navigate('/doctor/schedule');
+                        navigate(ROUTES.doctorSchedule);
                         setDropdownOpen(false);
                       }}
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors"
+                      className="w-full rounded-2xl px-4 py-3 text-left text-sm transition-colors hover:bg-slate-50"
                     >
                       Manage Schedule
                     </button>
@@ -137,7 +115,7 @@ const Header = () => {
 
                   <button
                     onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-red-100 text-red-700 transition-colors border-t border-gray-200"
+                    className="mt-1 w-full rounded-2xl border-t border-slate-100 px-4 py-3 text-left text-sm text-rose-700 transition-colors hover:bg-rose-50"
                   >
                     Logout
                   </button>
@@ -145,16 +123,16 @@ const Header = () => {
               )}
             </div>
           ) : (
-            <div className="flex space-x-2">
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => navigate('/login')}
-                className="text-white hover:text-blue-200 px-3 py-2 text-sm font-medium"
+                onClick={() => navigate(ROUTES.login)}
+                className="text-sm font-medium text-slate-200 transition-colors hover:text-white"
               >
                 Login
               </button>
               <button
-                onClick={() => navigate('/register/patient')}
-                className="bg-white text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                onClick={() => navigate(ROUTES.registerPatient)}
+                className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition-colors hover:bg-sky-50"
               >
                 Sign Up
               </button>
@@ -163,13 +141,7 @@ const Header = () => {
         </div>
       </nav>
 
-      {/* Click outside to close dropdown */}
-      {dropdownOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setDropdownOpen(false)}
-        />
-      )}
+      {dropdownOpen && <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />}
     </header>
   );
 };

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { authApi } from '../services/domainApi';
+import { ROUTES } from '../utils/routes';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -19,107 +20,102 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const endpoint = role === 'patient' ? '/auth/login/patient' : '/auth/login/doctor';
-      const response = await apiClient.post(endpoint, { email, password });
-      
-      // Use the AuthContext login method
-      const userData = response.data[role];
-      const token = response.data.token;
-      
-      login(userData, token, role);
-      
-      // Redirect to dashboard
+      const response =
+        role === 'patient'
+          ? await authApi.loginPatient({ email, password })
+          : await authApi.loginDoctor({ email, password });
+
+      login(response.data[role], response.data.token, role);
       navigate(`/${role}/dashboard`);
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Sign in to HMS</h2>
+    <div className="page-shell flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+      <div className="grid w-full max-w-5xl gap-8 lg:grid-cols-[0.92fr_1.08fr]">
+        <div className="panel hidden p-8 lg:block">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-700">Welcome back</p>
+          <h2 className="mt-4 text-4xl font-semibold text-slate-950">Pick up today’s care workflow right where you left it.</h2>
+          <p className="mt-4 text-slate-600">
+            Patients can manage visits and prescriptions. Doctors can review schedules, patients, and active treatment plans.
+          </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+
+        <form className="panel space-y-6 p-8" onSubmit={handleSubmit}>
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-700">Secure Access</p>
+            <h2 className="mt-3 text-3xl font-semibold text-slate-950">Sign in to HMS</h2>
+            <p className="mt-2 text-sm text-slate-500">Choose your portal and continue.</p>
+          </div>
+
           {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <p className="text-sm text-red-700">{error}</p>
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+              <p className="text-sm text-rose-700">{error}</p>
             </div>
           )}
-          
-          <div className="rounded-md shadow-sm -space-y-px">
+
+          <div className="space-y-4">
             <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="role" className="mb-2 block text-sm font-medium text-slate-700">
                 I am a:
               </label>
               <select
                 id="role"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="block w-full rounded-2xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200"
               >
                 <option value="patient">Patient</option>
                 <option value="doctor">Doctor</option>
               </select>
             </div>
 
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-              />
-            </div>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="block w-full rounded-2xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200"
+              placeholder="Email address"
+            />
 
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="relative block w-full appearance-none rounded-none rounded-b-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-              />
-            </div>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="block w-full rounded-2xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200"
+              placeholder="Password"
+            />
           </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              {loading ? 'Signing in...' : 'Sign in'}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex w-full justify-center rounded-full bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+          >
+            {loading ? 'Signing in...' : 'Sign in'}
+          </button>
 
-          <div className="text-center text-sm text-gray-600">
-            <p className="mb-3">Don't have an account?</p>
+          <div className="text-center text-sm text-slate-600">
+            <p className="mb-3">Do not have an account?</p>
             <div className="space-y-2">
-              <a href="/register/patient" className="block font-medium text-blue-600 hover:text-blue-500">
+              <button type="button" onClick={() => navigate(ROUTES.registerPatient)} className="block w-full font-medium text-sky-700 hover:text-sky-600">
                 Register as Patient
-              </a>
-              <a href="/register/doctor" className="block font-medium text-green-600 hover:text-green-500">
+              </button>
+              <button type="button" onClick={() => navigate(ROUTES.registerDoctor)} className="block w-full font-medium text-emerald-700 hover:text-emerald-600">
                 Register as Doctor
-              </a>
+              </button>
             </div>
           </div>
         </form>

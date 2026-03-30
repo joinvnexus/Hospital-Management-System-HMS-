@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import apiClient from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { doctorApi } from '../services/domainApi';
+import { ROUTES } from '../utils/routes';
 
 const DoctorsPage = () => {
+  const navigate = useNavigate();
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSpeciality, setSelectedSpeciality] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
-        const response = await apiClient.get('/doctors');
-        setDoctors(response.data.data);
+        setDoctors(await doctorApi.getAll());
       } catch (error) {
         console.error('Failed to fetch doctors:', error);
       } finally {
@@ -21,51 +24,65 @@ const DoctorsPage = () => {
     fetchDoctors();
   }, []);
 
-  const filteredDoctors = selectedSpeciality
-    ? doctors.filter(doc => doc.speciality === selectedSpeciality)
-    : doctors;
+  const specialities = [...new Set(doctors.map((doctor) => doctor.speciality).filter(Boolean))];
 
-  const specialities = [...new Set(doctors.map(doc => doc.speciality))];
+  const filteredDoctors = doctors.filter((doctor) => {
+    const matchesSpeciality = selectedSpeciality ? doctor.speciality === selectedSpeciality : true;
+    const haystack = `${doctor.firstName} ${doctor.lastName} ${doctor.speciality}`.toLowerCase();
+    const matchesSearch = haystack.includes(searchTerm.toLowerCase());
+    return matchesSpeciality && matchesSearch;
+  });
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Our Doctors</h1>
-
-        {/* Filter */}
+    <div className="page-shell py-12 px-4 sm:px-6 lg:px-8">
+      <div className="section-wrap">
         <div className="mb-8">
-          <select
-            value={selectedSpeciality}
-            onChange={(e) => setSelectedSpeciality(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
-          >
-            <option value="">All Specialities</option>
-            {specialities.map(spec => (
-              <option key={spec} value={spec}>{spec}</option>
-            ))}
-          </select>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-700">Doctor Directory</p>
+          <h1 className="mt-3 text-4xl font-semibold text-slate-950">Find the right specialist quickly.</h1>
+        </div>
+
+        <div className="panel mb-8 p-6">
+          <div className="grid gap-4 md:grid-cols-[1.4fr_0.8fr]">
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by name or specialty"
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+            />
+            <select
+              value={selectedSpeciality}
+              onChange={(e) => setSelectedSpeciality(e.target.value)}
+              className="rounded-2xl border border-slate-200 px-4 py-3"
+            >
+              <option value="">All Specialities</option>
+              {specialities.map((spec) => (
+                <option key={spec} value={spec}>
+                  {spec}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {loading ? (
-          <div classic="text-center py-12">
-            <p className="text-gray-600">Loading doctors...</p>
-          </div>
+          <div className="py-12 text-center text-slate-600">Loading doctors...</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredDoctors.map(doctor => (
-              <div key={doctor._id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition">
-                <div className="px-6 py-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    Dr. {doctor.firstName} {doctor.lastName}
-                  </h3>
-                  <p className="text-blue-600 font-medium mb-2">{doctor.speciality}</p>
-                  <p className="text-gray-600 text-sm mb-4">
-                    Experience: {doctor.experience} years
-                  </p>
-                  <button className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700">
-                    Book Appointment
-                  </button>
-                </div>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {filteredDoctors.map((doctor) => (
+              <div key={doctor._id} className="panel p-6">
+                <h3 className="mb-2 text-lg font-semibold text-slate-900">
+                  Dr. {doctor.firstName} {doctor.lastName}
+                </h3>
+                <p className="mb-2 font-medium text-sky-700">{doctor.speciality}</p>
+                <p className="mb-4 text-sm text-slate-600">
+                  Experience: {doctor.experience || doctor.yearsOfExperience || 0} years
+                </p>
+                <button
+                  onClick={() => navigate(ROUTES.bookAppointment)}
+                  className="w-full rounded-full bg-slate-950 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+                >
+                  Book Appointment
+                </button>
               </div>
             ))}
           </div>

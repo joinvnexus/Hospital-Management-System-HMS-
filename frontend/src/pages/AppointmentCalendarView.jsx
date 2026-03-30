@@ -291,7 +291,7 @@ const AppointmentCalendarView = () => {
                         {formatTime(appointment.time)}
                       </div>
                       <div className="text-sm text-gray-600">
-                        {user.role === 'patient'
+                        {role === 'patient'
                           ? `Dr. ${appointment.doctorId.firstName} ${appointment.doctorId.lastName}`
                           : `${appointment.patientId.firstName} ${appointment.patientId.lastName}`
                         }

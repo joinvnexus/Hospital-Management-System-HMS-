@@ -1,9 +1,12 @@
 import React from 'react';
+import { getStoredUser, normalizeAuthUser } from '../utils/auth';
 
 export const AuthContext = React.createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = React.useState(null);
+  const [user, setUser] = React.useState(() =>
+    normalizeAuthUser(getStoredUser(), localStorage.getItem('role'))
+  );
   const [token, setToken] = React.useState(localStorage.getItem('token'));
   const [isAuthenticated, setIsAuthenticated] = React.useState(!!localStorage.getItem('token'));
   const [role, setRole] = React.useState(localStorage.getItem('role') || null);
@@ -12,24 +15,25 @@ export const AuthProvider = ({ children }) => {
   // Initialize from localStorage on mount
   React.useEffect(() => {
     const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
     const storedRole = localStorage.getItem('role');
+    const storedUser = normalizeAuthUser(getStoredUser(), storedRole);
     
     if (storedToken && storedUser) {
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      setUser(storedUser);
       setRole(storedRole);
       setIsAuthenticated(true);
     }
   }, []);
 
   const login = (userData, authToken, userRole) => {
-    setUser(userData);
+    const normalizedUser = normalizeAuthUser(userData, userRole);
+    setUser(normalizedUser);
     setToken(authToken);
     setRole(userRole);
     setIsAuthenticated(true);
     localStorage.setItem('token', authToken);
-    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('user', JSON.stringify(normalizedUser));
     localStorage.setItem('role', userRole);
   };
 
