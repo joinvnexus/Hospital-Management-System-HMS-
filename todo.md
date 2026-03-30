@@ -27,8 +27,8 @@
 
 ## Patient Experience
 - [x] Refresh patient dashboard
-- [ ] Refresh patient profile view/edit
-- [ ] Refresh medical history page
+- [x] Refresh patient profile view/edit
+- [x] Refresh medical history page
 - [x] Improve appointment booking flow
 - [x] Improve appointment list page
 - [x] Improve prescription list page
@@ -36,7 +36,7 @@
 
 ## Doctor Experience
 - [x] Refresh doctor dashboard
-- [ ] Refresh doctor profile view/edit
+- [x] Refresh doctor profile view/edit
 - [x] Improve doctor schedule manager
 - [x] Improve prescription creation page
 - [ ] Refresh prescription detail page
